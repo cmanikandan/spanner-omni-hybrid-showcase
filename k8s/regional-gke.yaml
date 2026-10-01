@@ -1,0 +1,44 @@
+# ============================================================================
+# Spanner Omni GA (Chart 1.0.0) — 3-Zone Regional GKE Deployment Values
+# ============================================================================
+image:
+  repository: us-docker.pkg.dev/spanner-omni/images/spanner-omni-server
+  tag: "2026.r4-lts"
+
+deployment:
+  name: gke-regional-omni
+  locations:
+    - name: us-central1
+      zones:
+        - name: us-central1-a
+          replicas: 1
+        - name: us-central1-b
+          replicas: 1
+        - name: us-central1-c
+          replicas: 1
+
+resources:
+  requests:
+    cpu: "4"
+    memory: "16Gi"
+  limits:
+    cpu: "4"
+    memory: "16Gi"
+
+storage:
+  data:
+    storageClassName: premium-rwo
+    size: 100Gi
+  logs:
+    storageClassName: standard-rwo
+    size: 20Gi
+
+service:
+  type: ClusterIP
+  port: 15000
+
+console:
+  enabled: false
+
+monitoring:
+  enabled: false

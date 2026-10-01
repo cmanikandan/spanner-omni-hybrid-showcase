@@ -1,0 +1,40 @@
+# ============================================================================
+# Spanner Omni GA — Single Distributed Database Spanning GCP GKE + AWS EKS
+# Requires private routable inter-cloud VPC peering/VPN, cross-cluster DNS,
+# and mTLS certificates covering all server SANs across locations.
+# ============================================================================
+image:
+  repository: us-docker.pkg.dev/spanner-omni/images/spanner-omni-server
+  tag: "2026.r4-lts"
+
+multiCloud:
+  enabled: true
+  currentLocation: us-central1-gcp
+  locations:
+    - name: us-central1-gcp
+      provider: gcp
+      zones:
+        - name: us-central1-a
+          replicas: 1
+        - name: us-central1-b
+          replicas: 1
+    - name: us-east-1-aws
+      provider: aws
+      zones:
+        - name: us-east-1a
+          replicas: 1
+        - name: us-east-1b
+          replicas: 1
+    - name: onprem-edge-witness
+      provider: generic
+      zones:
+        - name: edge-zone-1
+          replicas: 1
+          role: witness
+
+security:
+  tls:
+    enabled: true
+    caSecretName: spanner-omni-ca
+    serverSecretName: spanner-omni-server-tls
+    apiSecretName: spanner-omni-api-tls

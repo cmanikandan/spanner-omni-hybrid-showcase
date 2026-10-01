@@ -1,0 +1,47 @@
+# ============================================================================
+# Spanner Omni GA (Chart 1.0.0) — 3-Zone Regional AWS EKS Deployment Values
+# Requires AL2023 M7a nodes with /dev/vmclock0 and EBS CSI driver (aws-gp3).
+# ============================================================================
+image:
+  repository: us-docker.pkg.dev/spanner-omni/images/spanner-omni-server
+  tag: "2026.r4-lts"
+
+platform:
+  aws:
+    enableVmClockDevice: true
+    vmClockDevicePath: /dev/vmclock0
+
+deployment:
+  name: eks-regional-omni
+  locations:
+    - name: us-east-1
+      zones:
+        - name: us-east-1a
+          replicas: 1
+        - name: us-east-1b
+          replicas: 1
+        - name: us-east-1c
+          replicas: 1
+
+resources:
+  requests:
+    cpu: "4"
+    memory: "16Gi"
+  limits:
+    cpu: "4"
+    memory: "16Gi"
+
+storage:
+  data:
+    storageClassName: aws-gp3
+    size: 100Gi
+  logs:
+    storageClassName: aws-gp3
+    size: 20Gi
+
+service:
+  type: ClusterIP
+  port: 15000
+
+console:
+  enabled: false

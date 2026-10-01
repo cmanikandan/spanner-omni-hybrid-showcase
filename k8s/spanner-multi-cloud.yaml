@@ -1,0 +1,30 @@
+# ============================================================================
+# Spanner Omni Multi-Cloud Paxos Quorum Topology Definition
+# ============================================================================
+name: hybrid-multicloud-production
+location:
+  - name: us-central1-gcp
+  - name: us-east-1-aws
+  - name: edge-workstation
+zone:
+  - name: us-central1-a
+    location: us-central1-gcp
+  - name: us-central1-b
+    location: us-central1-gcp
+  - name: us-east-1a
+    location: us-east-1-aws
+  - name: us-east-1b
+    location: us-east-1-aws
+  - name: edge-zone-1
+    location: edge-workstation
+servers:
+  - address: spanner-gcp-a.omni.internal:15000
+    zone: us-central1-a
+  - address: spanner-gcp-b.omni.internal:15000
+    zone: us-central1-b
+  - address: spanner-aws-a.omni.internal:15000
+    zone: us-east-1a
+  - address: spanner-aws-b.omni.internal:15000
+    zone: us-east-1b
+  - address: spanner-edge-1.omni.internal:15000
+    zone: edge-zone-1

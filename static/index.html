@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spanner Omni Hybrid Multi-Cloud Control Plane (Laptop • GCP • AWS)</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #131b31;
+      --panel-alt: #192340;
+      --border: #26355d;
+      --text: #e8eefc;
+      --muted: #95a5c6;
+      --blue: #4285f4;
+      --green: #34a853;
+      --amber: #fbbc04;
+      --red: #ea4335;
+      --purple: #a142f4;
+      --cyan: #24c1e0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    header {
+      background: linear-gradient(90deg, #0f172a 0%, #172554 50%, #0f172a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge-ga {
+      background: rgba(66, 133, 244, 0.2);
+      border: 1px solid var(--blue);
+      color: #8ab4f8;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .brand p {
+      margin: 4px 0 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .convergence-pill {
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .converged {
+      background: rgba(52, 168, 83, 0.16);
+      border: 1px solid var(--green);
+      color: #81c995;
+    }
+    .diverged {
+      background: rgba(251, 188, 4, 0.16);
+      border: 1px solid var(--amber);
+      color: #fde293;
+    }
+    .container {
+      max-width: 1560px;
+      margin: 0 auto;
+      padding: 18px 24px 48px;
+    }
+    .topology-bar {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+    }
+    .link-group, .action-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn {
+      border: 1px solid var(--border);
+      background: var(--panel-alt);
+      color: var(--text);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn:hover { filter: brightness(1.15); }
+    .btn-link-up {
+      background: rgba(52, 168, 83, 0.18);
+      border-color: var(--green);
+      color: #81c995;
+    }
+    .btn-link-down {
+      background: rgba(234, 67, 53, 0.22);
+      border-color: var(--red);
+      color: #f28b82;
+    }
+    .btn-primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+    .btn-success {
+      background: var(--green);
+      border-color: var(--green);
+      color: #fff;
+    }
+    .btn-warn {
+      background: rgba(251, 188, 4, 0.2);
+      border-color: var(--amber);
+      color: #fde293;
+    }
+    .btn-purple {
+      background: rgba(161, 66, 244, 0.24);
+      border-color: var(--purple);
+      color: #d7aefb;
+    }
+    .sites-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 1180px) {
+      .sites-grid { grid-template-columns: 1fr; }
+    }
+    .site-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .site-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .site-laptop .site-header { border-top: 4px solid var(--cyan); }
+    .site-gcp .site-header { border-top: 4px solid var(--blue); }
+    .site-aws .site-header { border-top: 4px solid var(--amber); }
+    .site-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin: 0 0 4px 0;
+    }
+    .site-meta {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .digest-tag {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: #0b1020;
+      border: 1px solid var(--border);
+      color: #8ab4f8;
+    }
+    .site-body {
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .kpi {
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+    }
+    .kpi .val {
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .kpi .lbl {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 1px solid rgba(38, 53, 93, 0.6);
+    }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+    }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+    }
+    .form-inline {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      background: rgba(11, 16, 32, 0.55);
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    select, input {
+      background: var(--panel-alt);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 12px;
+    }
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 1100px) {
+      .bottom-grid { grid-template-columns: 1fr; }
+    }
+    .panel-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .panel-card h2 {
+      margin: 0 0 12px 0;
+      font-size: 15px;
+    }
+    .status-pill {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .status-ok { background: rgba(52, 168, 83, 0.2); color: #81c995; }
+    .status-warn { background: rgba(251, 188, 4, 0.2); color: #fde293; }
+    .status-err { background: rgba(234, 67, 53, 0.2); color: #f28b82; }
+    #banner-log {
+      background: rgba(66, 133, 244, 0.12);
+      border: 1px solid var(--blue);
+      color: #d2e3fc;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>
+        Spanner Omni Hybrid Multi-Cloud Showcase
+        <span class="badge-ga">GA 2026.r4-lts</span>
+      </h1>
+      <p>Write in any environment (Laptop Docker • GCP Compute Engine/GKE • AWS EC2 M7a/EKS) → Live Replication &amp; TrueTime Partition Reconciliation</p>
+    </div>
+    <div id="convergence-indicator" class="convergence-pill converged">
+      ● STATE CONVERGED ACROSS ALL 3 ENVIRONMENTS
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="banner-log"></div>
+
+    <div class="topology-bar">
+      <div class="link-group">
+        <strong style="font-size: 12px; color: var(--muted);">NETWORK LINKS (CLICK TO DISRUPT / RESTORE):</strong>
+        <button id="link-laptop-gcp" class="btn btn-link-up" onclick="toggleLink('laptop','gcp')">LAPTOP ↔ GCP: CONNECTED</button>
+        <button id="link-gcp-aws" class="btn btn-link-up" onclick="toggleLink('gcp','aws')">GCP ↔ AWS: CONNECTED</button>
+        <button id="link-laptop-aws" class="btn btn-link-up" onclick="toggleLink('laptop','aws')">LAPTOP ↔ AWS: CONNECTED</button>
+      </div>
+      <div class="action-group">
+        <button class="btn btn-warn" onclick="isolateSite('laptop')">✈ Isolate Laptop</button>
+        <button class="btn btn-warn" onclick="isolateSite('aws')">⚡ Isolate AWS</button>
+        <button class="btn btn-success" onclick="healAndReconcile()">🔄 Heal Network &amp; Reconcile</button>
+        <button class="btn btn-purple" onclick="runGuidedDemo()">▶ Run Guided Partition &amp; Recon Demo</button>
+        <button class="btn" onclick="resetMesh()">↺ Reset Seed</button>
+      </div>
+    </div>
+
+    <div class="sites-grid" id="sites-container"></div>
+
+    <div class="bottom-grid">
+      <div class="panel-card">
+        <h2>TrueTime Anti-Entropy &amp; Reconciliation Audit Log (ReconciliationEvents)</h2>
+        <div style="overflow-x: auto; max-height: 320px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Origin → Target</th>
+                <th>Entity</th>
+                <th>Resolution Strategy</th>
+                <th>Outcome</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="recon-log-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <h2>Unified Multi-Model Engine Explorer (Full-Text Search • Vector KNN • ISO GQL Graph)</h2>
+        <div class="form-inline" style="margin-bottom: 12px;">
+          <select id="mm-site">
+            <option value="laptop">Query Laptop (127.0.0.1:15000)</option>
+            <option value="gcp">Query GCP (127.0.0.1:25000)</option>
+            <option value="aws">Query AWS (127.0.0.1:35000)</option>
+          </select>
+          <input id="mm-query" type="text" value="waterproof" placeholder="Full-text token..." style="flex:1;" />
+          <button class="btn btn-primary" onclick="runFullTextSearch()">Full-Text Search</button>
+          <button class="btn" onclick="runVectorSearch('p1')">Vector KNN (p1)</button>
+          <button class="btn" onclick="runGraphQuery()">ISO GQL Graph</button>
+        </div>
+        <pre id="mm-output" class="mono" style="background:#080c18; padding:12px; border-radius:8px; border:1px solid var(--border); max-height:250px; overflow:auto; margin:0;">Click Full-Text Search, Vector KNN, or ISO GQL Graph to inspect multi-model results on any environment.</pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentMesh = null;
+
+    function showBanner(msg) {
+      const el = document.getElementById('banner-log');
+      el.style.display = 'block';
+      el.innerHTML = msg;
+    }
+
+    async function fetchMesh() {
+      const res = await fetch('/api/mesh');
+      currentMesh = await res.json();
+      renderMesh(currentMesh);
+    }
+
+    function renderMesh(data) {
+      const topo = data.topology;
+      const convEl = document.getElementById('convergence-indicator');
+      if (topo.state_converged) {
+        convEl.className = 'convergence-pill converged';
+        convEl.innerHTML = `● STATE CONVERGED (SHA-256: ${topo.site_digests.laptop})`;
+      } else {
+        convEl.className = 'convergence-pill diverged';
+        convEl.innerHTML = `⚠ STATE DIVERGED DURING PARTITION (Laptop: ${topo.site_digests.laptop.slice(0,8)} | GCP: ${topo.site_digests.gcp.slice(0,8)} | AWS: ${topo.site_digests.aws.slice(0,8)})`;
+      }
+
+      const pairs = [
+        ['laptop', 'gcp', 'link-laptop-gcp'],
+        ['gcp', 'aws', 'link-gcp-aws'],
+        ['laptop', 'aws', 'link-laptop-aws']
+      ];
+      for (const [a, b, btnId] of pairs) {
+        const key = `${a}<->${b}`;
+        const up = topo.links[key];
+        const btn = document.getElementById(btnId);
+        btn.className = `btn ${up ? 'btn-link-up' : 'btn-link-down'}`;
+        btn.textContent = `${a.toUpperCase()} ↔ ${b.toUpperCase()}: ${up ? 'CONNECTED' : 'DISRUPTED'}`;
+      }
+
+      const container = document.getElementById('sites-container');
+      container.innerHTML = '';
+      for (const siteKey of ['laptop', 'gcp', 'aws']) {
+        const s = data.sites[siteKey];
+        const card = document.createElement('div');
+        card.className = `site-card site-${siteKey}`;
+        const invOk = s.invariants.valid;
+        const outboxCount = s.metrics.pending_outbox_count;
+
+        const prodRows = s.products.slice(0, 4).map(p => `
+          <tr>
+            <td class="mono">${p.ProductId}</td>
+            <td>${p.Name}</td>
+            <td><strong>${p.Stock}</strong> / ${p.InitialStock}</td>
+            <td><span class="status-pill ${p.UpdatedSite === siteKey ? 'status-ok' : 'status-warn'}">${p.UpdatedSite}</span></td>
+            <td><button class="btn" style="padding:3px 7px; font-size:11px;" onclick="quickBuy('${siteKey}', '${p.ProductId}')">Buy 1</button></td>
+          </tr>
+        `).join('');
+
+        const accRows = s.accounts.slice(0, 4).map(a => `
+          <tr>
+            <td class="mono">${a.AccountId}</td>
+            <td>${a.Owner}</td>
+            <td class="mono"><strong>$${a.Balance}</strong></td>
+            <td><span class="status-pill ${a.UpdatedSite === siteKey ? 'status-ok' : 'status-warn'}">${a.UpdatedSite}</span></td>
+          </tr>
+        `).join('');
+
+        const orderRows = s.orders.slice(0, 4).map(o => `
+          <tr>
+            <td class="mono">${o.OrderId.slice(0, 14)}</td>
+            <td class="mono">${o.ProductId} × ${o.Quantity}</td>
+            <td><span class="status-pill ${o.Status === 'CONFIRMED' ? 'status-ok' : 'status-err'}">${o.Status}</span></td>
+            <td class="mono">${o.OriginSite}</td>
+          </tr>
+        `).join('');
+
+        card.innerHTML = `
+          <div class="site-header">
+            <div>
+              <div class="site-title">${s.metadata.name}</div>
+              <div class="site-meta">${s.endpoint} • ${s.metadata.clock_source} (ε=${s.metadata.epsilon_us}μs)</div>
+            </div>
+            <div class="digest-tag">SHA: ${s.state_digest.slice(0, 10)}</div>
+          </div>
+          <div class="site-body">
+            <div class="kpi-row">
+              <div class="kpi"><div class="val">${s.metrics.total_orders}</div><div class="lbl">Orders</div></div>
+              <div class="kpi"><div class="val">$${(s.metrics.revenue_cents / 100).toFixed(0)}</div><div class="lbl">Revenue</div></div>
+              <div class="kpi"><div class="val">${s.metrics.total_transfers}</div><div class="lbl">Transfers</div></div>
+              <div class="kpi"><div class="val" style="color:${outboxCount > 0 ? '#fbbc04' : '#81c995'}">${outboxCount}</div><div class="lbl">Pending Recon</div></div>
+            </div>
+
+            <div>
+              <div class="section-label">
+                <span>OmniRetail Inventory (Stock Invariant: ${invOk ? 'PASS' : 'FAIL'})</span>
+              </div>
+              <table>
+                <thead><tr><th>ID</th><th>Product</th><th>Stock</th><th>Last Site</th><th>Action</th></tr></thead>
+                <tbody>${prodRows}</tbody>
+              </table>
+            </div>
+
+            <div>
+              <div class="section-label"><span>PayMesh Accounts &amp; Instant Cross-Cloud Transfer</span></div>
+              <table>
+                <thead><tr><th>ID</th><th>Owner</th><th>Balance</th><th>Updated By</th></tr></thead>
+                <tbody>${accRows}</tbody>
+              </table>
+              <div class="form-inline" style="margin-top:6px;">
+                <select id="src-${siteKey}">
+                  <option value="acc-1">acc-1 (Asha)</option>
+                  <option value="acc-2" selected>acc-2 (Vikram)</option>
+                  <option value="acc-4">acc-4 (Coastal)</option>
+                </select>
+                <span style="align-self:center; font-size:12px;">→</span>
+                <select id="dst-${siteKey}">
+                  <option value="acc-1" selected>acc-1 (Asha)</option>
+                  <option value="acc-3">acc-3 (Meera)</option>
+                  <option value="acc-5">acc-5 (Rao Trust)</option>
+                </select>
+                <input id="amt-${siteKey}" type="number" value="100" style="width:70px;" />
+                <button class="btn btn-primary" onclick="submitTransfer('${siteKey}')">Transfer on ${siteKey.toUpperCase()}</button>
+              </div>
+            </div>
+
+            <div>
+              <div class="section-label"><span>Recent Interleaved Orders (Customers → Orders)</span></div>
+              <table>
+                <thead><tr><th>OrderId</th><th>Item</th><th>Status</th><th>Origin</th></tr></thead>
+                <tbody>${orderRows}</tbody>
+              </table>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      }
+
+      // Render unified reconciliation events
+      const allEvents = [];
+      for (const siteKey of ['laptop', 'gcp', 'aws']) {
+        for (const ev of data.sites[siteKey].recon_events) {
+          allEvents.push(ev);
+        }
+      }
+      allEvents.sort((a, b) => (b.ReconciledAt || '').localeCompare(a.ReconciledAt || ''));
+      const logBody = document.getElementById('recon-log-body');
+      if (allEvents.length === 0) {
+        logBody.innerHTML = `<tr><td colspan="5" style="color:var(--muted);">No replication or reconciliation events recorded yet. Execute a transfer, buy a product, or click "Run Guided Partition & Recon Demo".</td></tr>`;
+      } else {
+        logBody.innerHTML = allEvents.slice(0, 18).map(ev => `
+          <tr>
+            <td class="mono"><strong>${ev.SourceSite.toUpperCase()}</strong> → <strong>${ev.TargetSite.toUpperCase()}</strong></td>
+            <td class="mono">${ev.EntityType}:${ev.EntityKey}</td>
+            <td class="mono">${ev.ResolutionStrategy}</td>
+            <td><span class="status-pill ${ev.Outcome.includes('COMPENSATED') ? 'status-warn' : 'status-ok'}">${ev.Outcome}</span></td>
+            <td>${ev.Details}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    async function quickBuy(site, productId) {
+      const res = await fetch(`/api/site/${site}/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_id: 'cust-asha', product_id: productId, quantity: 1 })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showBanner(`⚠ Checkout rejected on ${site.toUpperCase()}: ${data.detail}`);
+      } else {
+        const prop = JSON.stringify(data.propagation);
+        showBanner(`✔ Committed Order <code>${data.order.OrderId}</code> on <strong>${site.toUpperCase()}</strong>. Peer propagation: <code>${prop}</code>`);
+      }
+      await fetchMesh();
+    }
+
+    async function submitTransfer(site) {
+      const src = document.getElementById(`src-${site}`).value;
+      const dst = document.getElementById(`dst-${site}`).value;
+      const amount = document.getElementById(`amt-${site}`).value;
+      const res = await fetch(`/api/site/${site}/transfer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ src, dst, amount })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showBanner(`⚠ Transfer rejected on ${site.toUpperCase()}: ${data.detail}`);
+      } else {
+        const prop = JSON.stringify(data.propagation);
+        showBanner(`✔ Committed Transfer <code>${data.transfer.TransferId}</code> ($${amount} ${src} → ${dst}) on <strong>${site.toUpperCase()}</strong>. Peer propagation: <code>${prop}</code>`);
+      }
+      await fetchMesh();
+    }
+
+    async function toggleLink(siteA, siteB) {
+      const key = `${siteA}<->${siteB}`;
+      const currentlyUp = currentMesh.topology.links[key];
+      await fetch('/api/chaos/link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ site_a: siteA, site_b: siteB, connected: !currentlyUp })
+      });
+      showBanner(`⚡ Network link <strong>${siteA.toUpperCase()} ↔ ${siteB.toUpperCase()}</strong> set to <strong>${!currentlyUp ? 'CONNECTED' : 'DISRUPTED'}</strong>.`);
+      await fetchMesh();
+    }
+
+    async function isolateSite(site) {
+      await fetch(`/api/chaos/isolate/${site}`, { method: 'POST' });
+      showBanner(`⚡ Isolated <strong>${site.toUpperCase()}</strong> from all peer environments. Writes on ${site.toUpperCase()} will queue in <code>SyncMutations</code> until reconciliation.`);
+      await fetchMesh();
+    }
+
+    async function healAndReconcile() {
+      const res = await fetch('/api/chaos/heal?auto_reconcile=true', { method: 'POST' });
+      const data = await res.json();
+      const rec = data.reconciliation;
+      showBanner(`🔄 Network healed &amp; TrueTime Reconciliation complete! Applied <strong>${rec.events_applied_count}</strong> mutation events, compensated <strong>${rec.conflicts_compensated_count}</strong> split-brain conflicts. Converged: <strong>${rec.state_converged}</strong>`);
+      await fetchMesh();
+    }
+
+    async function runGuidedDemo() {
+      const res = await fetch('/api/demo/guided-recon', { method: 'POST' });
+      const data = await res.json();
+      showBanner(
+        `<strong>▶ Guided Partition &amp; Recon Demo Executed:</strong><br/>` +
+        `1) Connected GCP write ($250 acc-2 → acc-3) replicated live to Laptop &amp; AWS.<br/>` +
+        `2) Severed all links; executed concurrent conflicting orders on p1 (7 units on GCP @ T1, 6 units on AWS @ T2 for 10 stock) + concurrent transfers on acc-1 ($300 on Laptop, $200 on AWS).<br/>` +
+        `3) Healed network &amp; reconciled via TrueTime: acc-1 merged commutatively to <strong>$${data.step3_reconciliation.converged_acc1_balance.laptop}</strong>, GCP order confirmed (p1 stock=<strong>${data.step3_reconciliation.converged_p1_stock.laptop}</strong>), AWS order compensated to <code>BACKORDERED_RECON_COMPENSATED</code>, and all 3 environments converged to SHA-256 <code>${data.step3_reconciliation.converged_digests.laptop}</code>!`
+      );
+      await fetchMesh();
+    }
+
+    async function resetMesh() {
+      await fetch('/api/reset', { method: 'POST' });
+      showBanner(`↺ Reset Laptop, GCP, and AWS environments to clean initial seed state.`);
+      await fetchMesh();
+    }
+
+    async function runFullTextSearch() {
+      const site = document.getElementById('mm-site').value;
+      const q = document.getElementById('mm-query').value;
+      const res = await fetch(`/search?site=${site}&q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      document.getElementById('mm-output').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function runVectorSearch(pid) {
+      const site = document.getElementById('mm-site').value;
+      const res = await fetch(`/api/site/${site}/similar/${pid}`);
+      const data = await res.json();
+      document.getElementById('mm-output').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function runGraphQuery() {
+      const site = document.getElementById('mm-site').value;
+      const [payRes, retailRes] = await Promise.all([
+        fetch(`/network/acc-2?site=${site}`),
+        fetch(`/api/site/${site}/graph/retail`)
+      ]);
+      const payGraph = await payRes.json();
+      const retailGraph = await retailRes.json();
+      document.getElementById('mm-output').textContent = JSON.stringify({ payGraph, retailGraph }, null, 2);
+    }
+
+    fetchMesh();
+  </script>
+</body>
+</html>
