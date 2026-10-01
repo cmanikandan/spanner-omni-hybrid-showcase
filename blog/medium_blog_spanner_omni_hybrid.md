@@ -2,6 +2,8 @@
 
 *How Google Cloud’s Spanner Omni (GA `2026.r4-lts`) breaks the hardware atomic-clock barrier—and how to architect "Write Anywhere, Update Everywhere" with deterministic reconciliation when network connections fail.*
 
+> **Disclaimer**: This article and its companion repository represent a **personal project** built for architectural exploration, multi-cloud testing, and hands-on learning. It is **not** an official Google Cloud publication or supported reference implementation. Always refer to the [Official Google Cloud Spanner Omni Documentation](https://docs.cloud.google.com/spanner-omni/overview) and [Spanner Omni Release Notes](https://docs.cloud.google.com/spanner-omni/release-notes) for the latest product capabilities, system requirements, and licensing terms.
+
 ![Spanner Omni Hybrid Multi-Cloud Architecture](./images/hero_spanner_omni_hybrid.jpg)
 
 ---
@@ -17,7 +19,7 @@ With the General Availability of **Spanner Omni (`2026.r4-lts`)**, Google has de
 3. **Amazon Web Services (AWS)** EC2 instances (`m7a.xlarge` with `/dev/vmclock0`) or EKS clusters
 4. **On-premises bare-metal or edge sites**
 
-In this hands-on architectural deep dive, we will build and run a complete **Hybrid Multi-Cloud Showcase (`PayMesh + OmniRetail`)** spanning **GCP**, **AWS**, and a **Local Laptop Docker Container**. Most importantly, we will demonstrate two capabilities every enterprise architect asks about:
+In this hands-on architectural deep dive, we will build and run a self-contained **Hybrid Multi-Cloud Showcase (`PayMesh + OmniRetail`)** spanning **GCP**, **AWS**, and a **Local Laptop Docker Container**. Most importantly, we will demonstrate two capabilities every enterprise architect asks about:
 
 - **Live Cross-Environment Synchronization**: When a database record is updated in *any* environment (Laptop, GCP, or AWS), how is it immediately reflected in the other environments?
 - **Network Disruption & Deterministic Reconciliation (`Recon`)**: When connections between environments are severed—and conflicting transactions occur independently during the outage—how does reconciliation happen without losing money or violating inventory invariants?
@@ -41,19 +43,25 @@ Spanner Omni replaces specialized rack hardware with a **Software-Based TrueTime
   - On **Google Compute Engine**, Omni leverages gVNIC precision time synchronization with a `TERMINATE` host-maintenance policy (avoiding uncalibrated live-migration clock jumps).
   - On a **Laptop Docker Container**, Omni uses the host kernel clock for zero-friction inner-loop development.
 
-### Architectural Decision Matrix
+---
 
-| Capability Dimension | Managed Cloud Spanner | Spanner Omni (Self-Managed GA) | Traditional Distributed SQL |
+## 2. Spanner Omni Editions: Developer Edition vs. Commercial Edition vs. Managed Cloud Spanner
+
+One of the most practical aspects of Spanner Omni is that it ships with a built-in **Developer Edition** alongside the **Commercial Edition**. Understanding the exact boundaries between these editions is essential when planning development, PoCs, and production rollouts:
+
+| Capability / Licensing Dimension | Spanner Omni **Developer Edition** (Default in Container) | Spanner Omni **Commercial Edition** | **Managed Cloud Spanner** (GCP Service) |
 | :--- | :--- | :--- | :--- |
-| **Infrastructure Scope** | Fully Managed GCP Service | Laptop Docker, AWS EC2/EKS, GCP GCE/GKE, On-Prem | Self-managed VM/K8s clusters |
-| **Consistency Guarantee** | External Consistency (Strict Serializability) | External Consistency (Strict Serializability) | Snapshot Isolation / Read Committed |
-| **TrueTime Mechanism** | Hardware (GPS + Rubidium Clocks) | Software-based $\epsilon$-drift compensation (`/dev/vmclock0`, PTP/NTP) | Hybrid Logical Clocks (HLC / Raft) |
-| **Multi-Model Engine** | Relational, Search, Vector, ISO GQL Graph | Relational, Search, Vector, ISO GQL Graph | Relational only (external Graph/Vector DBs) |
-| **Client SDK Portability** | `google-cloud-spanner` | Identical `google-cloud-spanner` (`InstanceType.OMNI`) | Custom / Postgres variant drivers |
+| **Target Use Case** | Local developer inner-loop, CI/CD pipelines, functional PoCs, and architectural demos (non-production) | Mission-critical production workloads on AWS, Azure, On-Premises, Sovereign GCP, or Edge | Cloud-native workloads on GCP wanting zero database ops & Google SLAs |
+| **Licensing Model** | **Free** out of the box (optional free perpetual Developer key for extended multi-node dev) | **Annual per-vCPU subscription** (including worker vCPUs) or **paid 90-day PoC license** | Managed consumption pricing (nodes/processing units + storage) |
+| **Single-Server ($\le 4$ vCPUs) Behavior** | **Never expires** (unlimited reads & writes) and **includes full Backup & Restore** without any license key | Never expires during active subscription | N/A (Managed continuous service) |
+| **Multi-Server or $> 4$ vCPUs Behavior** | **90-day write limit** by default; after 90 days, writes are blocked and the database becomes **read-only** | Unlimited reads & writes across multi-zone and multi-cloud Paxos topologies | Elastic multi-region and regional scale |
+| **Perpetual Developer Key Trade-off** | Installing the free perpetual Developer key removes the 90-day write limit for dev/test, **but disables Backup & Restore** | Full **Backup & Restore** enabled across all topologies (GCS, S3, or S3-compatible storage) | Automated Managed Backups, PITR & Export |
+| **Stateless ANN Vector Workers** | **Not available** (exact KNN via `COSINE_DISTANCE` works, but dedicated worker nodes on port `15027` are disabled) | **Available** (stateless workers build ANN vector indexes on tables $>1\text{M}$ rows up to **1 Billion vectors**) | Native high-scale vector indexing |
+| **Multi-Model SQL, Search & Graph** | GoogleSQL, PostgreSQL (`PGAdapter`), Full-Text Search, and ISO GQL Property Graph | GoogleSQL, PostgreSQL (`PGAdapter`), Full-Text Search, and ISO GQL Property Graph | GoogleSQL, PostgreSQL, Search, Vector, Graph + BigQuery Data Boost |
 
 ---
 
-## 2. One Engine, Four Data Models: No External Sync Pipelines
+## 3. One Engine, Four Data Models: No External Sync Pipelines
 
 In most enterprise architectures, building an application that needs **ACID financial ledgers**, **full-text search**, **vector similarity recommendations**, and **graph relationship traversal** requires stitching together four separate databases (e.g., Postgres + Elasticsearch + Pinecone + Neo4j) with fragile CDC pipelines.
 
@@ -122,9 +130,9 @@ RETURN DISTINCT b.AccountId AS account_id, b.Owner AS owner;
 
 ---
 
-## 3. Deploying Across Laptop Docker, GCP, and AWS
+## 4. Zero-Pre-Provisioning Deployment Across Laptop Docker, GCP, and AWS
 
-The exact same Python application connects to any Spanner Omni endpoint using `InstanceType.OMNI` and `ClientOptions(api_endpoint=...)`:
+The exact same Python sample application ([`sample-app/app.py`](../sample-app/app.py)) connects to any Spanner Omni endpoint using `InstanceType.OMNI` and `ClientOptions(api_endpoint=...)`:
 
 ```python
 from google.api_core.client_options import ClientOptions
@@ -139,34 +147,18 @@ client = spanner.Client(
 database = client.instance("default").database("omni-hybrid")
 ```
 
-### Environment 1: Laptop Workstation (`127.0.0.1:15000`)
-```bash
-bash scripts/laptop-start.sh
-```
-This pulls `us-docker.pkg.dev/spanner-omni/images/spanner-omni:2026.r4-lts`, creates a persistent Docker volume, and exposes the gRPC API on `127.0.0.1:15000`, the administrative web console on `127.0.0.1:15026`, and PGAdapter on `127.0.0.1:5432`.
+To make the deployment 100% self-contained, our cloud scripts require **zero pre-created VPCs, Subnets, Security Groups, or SSH Key Pairs**:
 
-### Environment 2: Google Cloud Compute Engine (`127.0.0.1:25000` via SSH Tunnel)
-```bash
-export GCP_PROJECT=your-gcp-project
-export GCP_ZONE=us-central1-a
-export MY_IP_CIDR=$(curl -s https://checkip.amazonaws.com)/32
-bash scripts/gcp-create.sh
-```
-This provisions an isolated VPC, an `e2-standard-4` VM with `--maintenance-policy=TERMINATE`, and a dedicated `100GB pd-ssd` disk mounted at `/mnt/omni-data`. We forward local port `25000` to the VM’s loopback `15000`.
-
-### Environment 3: AWS EC2 `m7a.xlarge` (`127.0.0.1:35000` via SSH Tunnel)
-```bash
-export AWS_REGION=us-east-1
-export AWS_SUBNET_ID=subnet-xxxxxxxx
-export AWS_KEY_NAME=your-ec2-keypair
-export MY_IP_CIDR=$(curl -s https://checkip.amazonaws.com)/32
-bash scripts/aws-create.sh
-```
-This launches an Amazon Linux 2023 `m7a.xlarge` instance with encrypted `gp3` EBS volumes, configures `udev` permissions on `/dev/vmclock0`, and passes `--device /dev/vmclock0:/dev/vmclock0` into the Spanner Omni container.
+1. **Laptop Workstation (`127.0.0.1:15000`)**:
+   - `bash scripts/laptop-start.sh` pulls `us-docker.pkg.dev/spanner-omni/images/spanner-omni:2026.r4-lts`, creates a persistent Docker volume, caps the container at 4 CPUs (for non-expiring Developer Edition use), and starts `spanneromni`.
+2. **Google Cloud Compute Engine (`127.0.0.1:25000` via SSH Tunnel)**:
+   - `bash scripts/gcp-create.sh` automatically enables the Compute Engine API, creates an isolated VPC (`omni-demo-vpc`), Subnet (`10.10.0.0/24`), Cloud Router & Cloud NAT, SSH/Internal Firewall Rules, a `100GB pd-ssd` data disk, and an `e2-standard-4` VM (`--maintenance-policy=TERMINATE`).
+3. **AWS EC2 `m7a.xlarge` (`127.0.0.1:35000` via SSH Tunnel)**:
+   - `bash scripts/aws-create.sh` automatically creates a dedicated AWS VPC (`10.20.0.0/16`), Internet Gateway, Public Subnet (`10.20.1.0/24`), Route Table, Security Group, a new EC2 SSH Key Pair (`run/omni-demo-key-*.pem`), and an `m7a.xlarge` Amazon Linux 2023 instance with encrypted `gp3` EBS volumes and `/dev/vmclock0` mounted into the container.
 
 ---
 
-## 4. When Connections Break: How Cross-Cloud Sync & Reconciliation (`Recon`) Work
+## 5. When Connections Break: How Cross-Cloud Sync & Reconciliation (`Recon`) Work
 
 Now let’s tackle the central architectural question:
 
@@ -208,66 +200,19 @@ To solve both problems deterministically, our showcase implements a **Transactio
 
 ---
 
-## 5. Seeing It in Action: CLI & Interactive Control Plane
+## 6. Seeing It in Action: Self-Contained Sample App & Interactive Control Plane
 
-You can run the entire 3-phase demonstration from your terminal in under two seconds:
+You can run the self-contained sample app walkthrough across all three environments in under two seconds:
+
+```bash
+python3 sample-app/init_db.py --all-sites
+python3 sample-app/client_demo.py
+```
+
+Or run the CLI simulation report:
 
 ```bash
 python3 manage.py simulate-recon
-```
-
-Here is the actual output from the engine:
-
-```text
-==============================================================================
-SPANNER OMNI HYBRID MULTI-CLOUD SYNC & PARTITION RECONCILIATION REPORT
-==============================================================================
-
-[Phase 1] Connected Multi-Cloud Write (GCP -> Laptop & AWS):
-{
-  "description": "Write on GCP ($250 acc-2 -> acc-3) replicated immediately to Laptop & AWS",
-  "propagation": {
-    "laptop": "LIVE_REPLICATED",
-    "aws": "LIVE_REPLICATED"
-  },
-  "digests_after_live_sync": {
-    "laptop": "509ab76024b7656a",
-    "gcp": "509ab76024b7656a",
-    "aws": "509ab76024b7656a"
-  },
-  "all_converged": true
-}
-
-[Phase 2] Network Disrupted — Independent Concurrent Writes Across Clouds:
-{
-  "description": "All 3 environments disconnected; concurrent conflicting stock orders & account transfers executed",
-  "diverged_digests": {
-    "laptop": "595b4ebfeb77c4c1",
-    "gcp": "8e4b0d1829a0c5d8",
-    "aws": "9bd5016ae4f1293f"
-  },
-  "diverged_p1_stock": {
-    "laptop": 10,
-    "gcp": 3,
-    "aws": 4
-  },
-  "diverged_acc1_balance": {
-    "laptop": "4700.00",
-    "gcp": "5000.00",
-    "aws": "4800.00"
-  },
-  "all_diverged": true
-}
-
-[Phase 3] Network Healed — TrueTime Anti-Entropy Reconciliation & Convergence:
-  - Total Mutations Evaluated : 5
-  - Events Applied            : 9
-  - Conflicts Compensated     : 4
-  - Post-Recon p1 Stock       : {'laptop': 3, 'gcp': 3, 'aws': 3}
-  - Post-Recon acc-1 Balance  : {'laptop': '4500.00', 'gcp': '4500.00', 'aws': '4500.00'}
-  - Post-Recon SHA-256 Digests: {'laptop': '7af5c94606d54ced', 'gcp': '7af5c94606d54ced', 'aws': '7af5c94606d54ced'}
-  - 100% State Converged      : True
-==============================================================================
 ```
 
 Or launch the interactive **3-Environment Control Plane Web UI** on `http://127.0.0.1:8080`:
@@ -284,8 +229,9 @@ From the browser dashboard, you can:
 
 ---
 
-## 6. Key Takeaways for Cloud Architects
+## 7. Key Takeaways for Cloud Architects
 
 1. **Zero Application Rework Across Form Factors**: Whether your code runs against a local Docker container on your MacBook, a self-managed VM in AWS or GCP, or managed Cloud Spanner, the SQL dialect, transaction semantics, and Python client calls remain identical.
-2. **Respect Clock & Storage Physics**: On AWS, always use qualified instance types (`m7a.xlarge` with AL2023) that expose `/dev/vmclock0` to bound TrueTime uncertainty. On GCP VMs, use `TERMINATE` on host maintenance and durable SSD block storage.
-3. **Design Explicitly for Network Partitions**: Use multi-zone/multi-cloud Paxos quorums when synchronous majority consensus is reachable, and pair transactional outboxes (`SyncMutations`) with commutative delta merging and TrueTime invariant compensation for disconnected edge environments.
+2. **Use Developer Edition Strategically**: Single-server deployments $\le 4$ vCPUs never expire and include full Backup & Restore for free; scale-out production clusters and high-scale ANN vector workers use the Commercial Edition.
+3. **Respect Clock & Storage Physics**: On AWS, always use qualified instance types (`m7a.xlarge` with AL2023) that expose `/dev/vmclock0` to bound TrueTime uncertainty. On GCP VMs, use `TERMINATE` on host maintenance and durable SSD block storage.
+4. **Design Explicitly for Network Partitions**: Use multi-zone/multi-cloud Paxos quorums when synchronous majority consensus is reachable, and pair transactional outboxes (`SyncMutations`) with commutative delta merging and TrueTime invariant compensation for disconnected edge environments.
