@@ -4,7 +4,7 @@ This directory contains the self-contained **PayMesh + OmniRetail** sample appli
 
 1. **Laptop Workstation (`127.0.0.1:15000`)** — Local Docker container
 2. **Google Cloud (`127.0.0.1:25000`)** — Compute Engine VM / GKE cluster
-3. **Amazon Web Services (`127.0.0.1:35000`)** — EC2 `m7a.xlarge` VM (`/dev/vmclock0`) / EKS cluster
+3. **Any External Cloud or On-Premises Datacenter (`127.0.0.1:35000`)** — Works identically on **Microsoft Azure**, **Oracle Cloud (OCI)**, **Amazon Web Services (AWS)**, or **On-Premises Datacenters / Bare-Metal** (sample provisioning script uses AWS EC2/EKS)
 
 ---
 

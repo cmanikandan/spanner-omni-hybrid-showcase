@@ -6,10 +6,10 @@
 
 ## 1. Purpose of This Repository
 
-This self-contained repository demonstrates **Google Cloud Spanner Omni (`2026.r4-lts`)** running across three environments:
+This self-contained repository demonstrates **Google Cloud Spanner Omni (`2026.r4-lts`)** running across hybrid, multi-cloud, and on-premises environments:
 1. **Laptop Workstation (`laptop`)**: Local Docker container (`127.0.0.1:15000`)
 2. **Google Cloud (`gcp`)**: Compute Engine VM (`e2-standard-4` + `pd-ssd`) or GKE cluster (`127.0.0.1:25000` via SSH tunnel)
-3. **Amazon Web Services (`aws`)**: EC2 `m7a.xlarge` VM (Amazon Linux 2023 + `gp3` EBS + `/dev/vmclock0`) or EKS cluster (`127.0.0.1:35000` via SSH tunnel)
+3. **Any External Cloud or On-Premises Datacenter (`aws` sample)**: Runs identically on **Microsoft Azure (VM / AKS)**, **Oracle Cloud Infrastructure (OCI / OKE)**, **Amazon Web Services (EC2 / EKS)**, or **On-Premises Bare-Metal / Kubernetes (`KVM` / `vSphere`)** (`127.0.0.1:35000` via SSH tunnel). This repository includes an automated **AWS (`scripts/aws-create.sh`)** script as a concrete external cloud example.
 
 It showcases:
 - **Self-Contained Sample Application ([`sample-app/`](./sample-app))**: Portable FastAPI service (`PayMesh` + `OmniRetail`) combining relational ACID transactions, interleaved tables (`Customers -> Orders`), Full-Text Search, Vector Similarity Search (`COSINE_DISTANCE`), and ISO GQL Property Graphs (`PayGraph` & `RetailGraph`).

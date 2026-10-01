@@ -70,10 +70,10 @@ SITE_METADATA: Dict[str, Dict[str, str]] = {
         "epsilon_us": "185",
     },
     "aws": {
-        "name": "Amazon Web Services (EC2 M7a / EKS)",
-        "provider": "Amazon Web Services",
-        "region": "us-east-1a",
-        "clock_source": "Software TrueTime (/dev/vmclock0 Nitro PTP)",
+        "name": "External Cloud / On-Prem (AWS Sample • Azure • OCI • DC)",
+        "provider": "Any Cloud / On-Premises (AWS used in sample script)",
+        "region": "us-east-1a (or Azure/OCI/DC zone)",
+        "clock_source": "Software TrueTime (PTP / NTP / /dev/vmclock0)",
         "epsilon_us": "210",
     },
 }
