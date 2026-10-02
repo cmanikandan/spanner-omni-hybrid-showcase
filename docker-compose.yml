@@ -4,7 +4,7 @@ services:
   spanner-omni-laptop:
     image: us-docker.pkg.dev/spanner-omni/images/spanner-omni:2026.r4-lts
     container_name: spanneromni-laptop
-    command: ["start-single-server", "--base-dir=/spanner", "--address=0.0.0.0"]
+    command: ["start-single-server", "--base-dir=/spanner", "--listen-addresses=0.0.0.0"]
     ports:
       - "127.0.0.1:15000:15000"
       - "127.0.0.1:15026:15026"
@@ -19,7 +19,7 @@ services:
   spanner-omni-gcp-sim:
     image: us-docker.pkg.dev/spanner-omni/images/spanner-omni:2026.r4-lts
     container_name: spanneromni-gcp-sim
-    command: ["start-single-server", "--base-dir=/spanner", "--address=0.0.0.0"]
+    command: ["start-single-server", "--base-dir=/spanner", "--listen-addresses=0.0.0.0"]
     ports:
       - "127.0.0.1:25000:15000"
     volumes:
@@ -29,7 +29,7 @@ services:
   spanner-omni-aws-sim:
     image: us-docker.pkg.dev/spanner-omni/images/spanner-omni:2026.r4-lts
     container_name: spanneromni-aws-sim
-    command: ["start-single-server", "--base-dir=/spanner", "--address=0.0.0.0"]
+    command: ["start-single-server", "--base-dir=/spanner", "--listen-addresses=0.0.0.0"]
     ports:
       - "127.0.0.1:35000:15000"
     volumes:

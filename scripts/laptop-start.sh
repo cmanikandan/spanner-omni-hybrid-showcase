@@ -26,7 +26,7 @@ else
     -p 127.0.0.1:5432:5432 \
     -v "${VOLUME_NAME}:/spanner" \
     "${OMNI_IMAGE}" \
-    start-single-server --base-dir=/spanner --address=0.0.0.0
+    start-single-server --base-dir=/spanner --listen-addresses=0.0.0.0
 fi
 
 echo "[*] Waiting for Spanner Omni gRPC listener on 127.0.0.1:15000..."

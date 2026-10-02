@@ -80,7 +80,7 @@ gcloud compute instances create "${GCP_INSTANCE}" \
   --zone "${GCP_ZONE}" \
   --machine-type=e2-standard-4 \
   --subnet="${GCP_SUBNET}" \
-  --maintenance-policy=TERMINATE \
+  --maintenance-policy=MIGRATE \
   --no-service-account --no-scopes \
   --image-family=ubuntu-2204-lts --image-project=ubuntu-os-cloud \
   --boot-disk-size=30GB --boot-disk-type=pd-balanced \
