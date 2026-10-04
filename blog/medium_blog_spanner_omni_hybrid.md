@@ -80,6 +80,9 @@ In our showcase schema ([`schema.sql`](../schema.sql)), we combine:
 3. **Vector Similarity Search Over Live Inventory**: Exact `COSINE_DISTANCE(p.Embedding, r.Embedding)` filtered by `p.Stock > 0` and protected by `CONSTRAINT StockNonnegative CHECK (Stock >= 0)`.
 4. **ISO GQL Property Graphs (`PayGraph` & `RetailGraph`)**: Multi-hop payment reachability (`MATCH (a:Accounts)-[:Paid]->{1,3}(b:Accounts)`) and customer purchase graphs over live relational tables.
 
+![OmniRetail Multi-Model Catalog & Vector Similarity Search](./images/screenshot_03_omniretail_vector_search_catalog.png)
+*Figure: The OmniRetail catalog executing vector similarity searches and order placement under physical stock check constraints directly within Spanner Omni.*
+
 ---
 
 ## 4. Zero-Pre-Provisioning Deployment Across Laptop, Google Cloud, and External Cloud / Datacenter
@@ -104,6 +107,12 @@ To make testing completely self-contained, our repository includes zero-pre-prov
 2. **Google Cloud (`127.0.0.1:25000` via SSH Tunnel)**: `bash scripts/gcp-create.sh` automatically creates a brand-new VPC, Subnet, Cloud Router/NAT, Firewall Rules, `100GB pd-ssd` disk, and `e2-standard-4` VM.
 3. **External Cloud / On-Premises Node (`127.0.0.1:35000` via SSH Tunnel)**: In our sample code, `bash scripts/aws-create.sh` automatically provisions a new VPC, Internet Gateway, Subnet, Route Table, Security Group, SSH Key Pair, and EC2 instance. You can equally point `127.0.0.1:35000` to an SSH tunnel connected to an **Azure VM**, an **Oracle Cloud (OCI) instance**, or an **on-premises Linux server** running the exact same Spanner Omni container.
 
+![Multi-Cloud Topology Dashboard with Software TrueTime Clocks](./images/screenshot_01_multi_cloud_topology.png)
+*Figure: Live multi-cloud mesh topology showing Laptop Workstation, Google Cloud (Compute Engine), and AWS (EC2) running in 100% cryptographic lockstep.*
+
+![Built-in Spanner Omni Native Web Console on Port 15026](./images/screenshot_06_spanner_omni_web_console.png)
+*Figure: Google Spanner Omni's built-in web management console running on port 15026, showing databases, runtime status, and performance metrics.*
+
 ---
 
 ## 5. When Connections Break: How Cross-Environment Sync & Reconciliation (`Recon`) Work
@@ -122,12 +131,23 @@ Naive "Last-Write-Wins" (LWW) overwrites balances and loses transactions during 
    Every business transaction (`execute_transfer` or `execute_checkout`) writes both the domain table update (`Accounts`/`Transfers` or `Products`/`Orders`) **and** a `SyncMutations` record inside the **same atomic Spanner transaction** stamped with `COMMIT_TIMESTAMP`.
 2. **Real-Time Propagation When Connected**:
    When network links between environments are healthy, committed mutations propagate immediately to all reachable peer environments, keeping their cryptographic `SHA-256` state digests identical.
+
+![PayMesh Cross-Cloud Financial Transfers & Mutation Outbox](./images/screenshot_02_paymesh_cross_cloud_transfers.png)
+*Figure: PayMesh financial ledger demonstrating cross-cloud funds transfer and instant outbox replication.*
+
 3. **TrueTime-Ordered Replay & Commutative Delta Merging**:
    When a disrupted network link is healed, `reconcile_all()` exchanges `SiteSyncWatermarks`, collects all pending `SyncMutations`, and orders them globally by `(CommitTs, OriginSite, MutationId)`:
    - **Commutative Balance Deltas**: Concurrent debits on `acc-1` (`-$300` on the Laptop and `-$200` on the External Cloud node) are replayed as signed deltas rather than LWW overwrites, converging all environments to **`$4,500.00`**.
    - **Invariant-Preserving Stock Compensation**: When two partitioned environments concurrently sell 7 units and 6 units of `p1` (which only had 10 units in stock), the earlier TrueTime order is `CONFIRMED` (`Stock: 10 -> 3`), while the later conflicting order is automatically transitioned to `BACKORDERED_RECON_COMPENSATED` to preserve `CONSTRAINT StockNonnegative CHECK (Stock >= 0)`.
+
+![Simulated Network Partition with State Divergence](./images/screenshot_04_chaos_network_partition.png)
+*Figure: Simulating a cloud network partition. Disconnected sites accept writes locally, entering temporary state divergence (`all_diverged: true`).*
+
 4. **Cryptographic Convergence Verification (`SHA-256`)**:
    Computes a canonical `SHA-256` digest across all tables in every environment to verify 100% bit-for-bit convergence.
+
+![TrueTime Anti-Entropy Reconciliation Report](./images/screenshot_05_truetime_reconciliation.png)
+*Figure: The TrueTime anti-entropy engine resolves split-brain conflicts and merges commutative ledger deltas, restoring 100% SHA-256 state convergence across all clouds.*
 
 ---
 

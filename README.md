@@ -270,6 +270,32 @@ bash scripts/start-app.sh
 
 Open **`http://127.0.0.1:8080`** in your browser to test live writes, network link disruptions, and TrueTime reconciliation across all three environments.
 
+### 6.3 Visual Walkthrough of Key Scenarios
+
+#### 1. Multi-Cloud Mesh Topology & Software TrueTime Drift Bounding
+![Multi-Cloud Mesh Topology](./blog/images/screenshot_01_multi_cloud_topology.png)
+*Live dashboard showing three interconnected Spanner Omni environments: Local Laptop Docker (`127.0.0.1:15000`), Google Cloud Compute Engine (`127.0.0.1:25000`), and AWS EC2 (`127.0.0.1:35000`), displaying live latency, TrueTime clock sources (Host kernel, gVNIC PTP, AWS Nitro `/dev/vmclock0`), and 100% cryptographic SHA-256 state convergence.*
+
+#### 2. PayMesh Cross-Cloud Financial Ledger & Atomic Propagation
+![PayMesh Financial Ledger](./blog/images/screenshot_02_paymesh_cross_cloud_transfers.png)
+*Real-time funds transfer across multi-region accounts (`acc-2` to `acc-1`). Every transaction atomically commits domain ledger tables and a `SyncMutations` record that replicates instantly across clouds.*
+
+#### 3. OmniRetail Unified Multi-Model Engine (Vectors, Interleaving & Check Constraints)
+![OmniRetail Vector Search and Catalog](./blog/images/screenshot_03_omniretail_vector_search_catalog.png)
+*Product catalog with physical stock check constraints (`CHECK (Stock >= 0)`), exact vector similarity search with embeddings (`COSINE_DISTANCE`), and customer order interleaving.*
+
+#### 4. Chaos Engineering: Simulated WAN Outage & Split-Brain Writes
+![Simulated Multi-Cloud Partition](./blog/images/screenshot_04_chaos_network_partition.png)
+*Simulating a WAN link disruption between clouds. Each disconnected environment continues accepting local writes independently, entering temporary state divergence (`all_diverged: true`).*
+
+#### 5. 4-Phase TrueTime Anti-Entropy Reconciliation & Convergence
+![TrueTime Reconciliation Report](./blog/images/screenshot_05_truetime_reconciliation.png)
+*Healing network partitions triggers the TrueTime anti-entropy engine: replaying commutative balance deltas and resolving split-brain stock contention using TrueTime commit timestamps (`CommitTs`), re-converging all 3 sites to 100% matching state.*
+
+#### 6. Built-in Spanner Omni Native Web Console (Port 15026)
+![Spanner Omni Native Web Console](./blog/images/screenshot_06_spanner_omni_web_console.png)
+*Native Google Spanner Omni web management console running on `127.0.0.1:15026` showing database list (`omni-hybrid`, `paymesh`), operational metrics, and query execution.*
+
 ---
 
 ## 7. Running the Self-Contained Sample Application (`sample-app/`)
