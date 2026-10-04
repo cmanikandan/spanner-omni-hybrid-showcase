@@ -1,8 +1,8 @@
-# Spanner Omni Everywhere: Building a Hybrid & Multi-Cloud Database Mesh Across Google Cloud, External Clouds (AWS, Azure, OCI), On-Premises Datacenters, and Laptop Docker — With Live Sync & TrueTime Reconciliation
+# Spanner Omni Everywhere: Building a True Hybrid & Multi-Cloud Database Mesh Across Google Cloud, External Clouds (AWS, Azure, OCI), On-Premises Datacenters, and Laptop Docker — With Live Sync & TrueTime Reconciliation
 
-*How Google Cloud’s Spanner Omni (GA `2026.r4-lts`) breaks the hardware atomic-clock barrier to run anywhere—and how to architect "Write Anywhere, Update Everywhere" with deterministic reconciliation when network connections fail.*
+*How Google Cloud’s Spanner Omni (GA `2026.r4-lts`) breaks the hardware atomic-clock barrier to run anywhere—delivering self-managed multi-cloud portability alongside fully managed Cloud Spanner, and powering built-in AI vector search without external sync pipelines.*
 
-> **Disclaimer**: This article and its companion repository represent a **personal project** built for architectural exploration, hybrid/multi-cloud testing, and hands-on learning. It is **not** an official Google Cloud publication or supported reference implementation. Always refer to the [Official Google Cloud Spanner Omni Documentation](https://docs.cloud.google.com/spanner-omni/overview) and [Spanner Omni Release Notes](https://docs.cloud.google.com/spanner-omni/release-notes) for the latest product capabilities, system requirements, and licensing terms.
+> **Disclaimer**: This article and its companion repository represent a **personal project** built for architectural exploration, hybrid/multi-cloud testing, and hands-on learning. It is **not** an official Google Cloud publication or supported reference implementation. Refer to the **[Official Google Cloud Spanner Omni GA Launch Announcement](https://cloud.google.com/blog/products/databases/spanner-omni-deploy-anywhere-version-of-spanner-is-now-ga)**, the **[Official Google Cloud Spanner Omni Documentation](https://docs.cloud.google.com/spanner-omni/overview)**, and the **[Spanner Omni Release Notes](https://docs.cloud.google.com/spanner-omni/release-notes)** for authoritative product capabilities, system requirements, and licensing terms.
 
 ![Spanner Omni Hybrid Multi-Cloud Architecture](./images/hero_spanner_omni_hybrid.jpg)
 
@@ -10,19 +10,24 @@
 
 ## Introduction: When Globally Consistent SQL Leaves the Datacenter
 
-For over a decade, **Google Cloud Spanner** held a unique place in distributed systems engineering: it delivered **external consistency (strict serializability)** at global scale without sacrificing high availability. Yet there was a catch—Spanner required Google’s proprietary datacenter hardware: rubidium atomic clocks and GPS receivers wired into every rack to bound clock uncertainty ($\epsilon$).
+For over a decade, **Google Cloud Spanner** held a unique place in distributed systems engineering: it delivered **external consistency (strict serializability)** at global scale without sacrificing high availability. Yet there was a catch—traditional Cloud Spanner required Google’s proprietary datacenter hardware: rubidium atomic clocks and GPS receivers wired into every rack to bound clock uncertainty ($\epsilon$).
 
-With the General Availability of **Spanner Omni (`2026.r4-lts`)**, Google has decoupled the core Spanner database engine from Google-owned hardware. Because Spanner Omni ships as a self-contained OCI container image and Kubernetes Helm chart, you can now run the exact same battle-tested Spanner engine—complete with **GoogleSQL**, **PostgreSQL (via PGAdapter)**, **Full-Text Search**, **Vector Similarity Search**, and **ISO GQL Property Graphs**—in **any environment**:
+With the General Availability of **Spanner Omni (`2026.r4-lts`)**, Google has decoupled the core Spanner database engine from Google-owned hardware. Spanner Omni is the **deploy-anywhere, self-managed version of Spanner Omni**, designed to run on any cloud provider, on-premises datacenter, or workstation, while **Cloud Spanner** remains available as a **fully managed**, zero-ops database service natively on Google Cloud.
+
+Because Spanner Omni ships as a self-contained OCI container image and Kubernetes Helm chart, you can now run the exact same battle-tested Spanner Omni engine—complete with **GoogleSQL**, **PostgreSQL (via PGAdapter)**, **Full-Text Search**, **Native AI Vector Similarity Search**, and **ISO GQL Property Graphs**—in **any environment**:
 
 1. **A developer laptop** running a single Docker container (`127.0.0.1:15000`)
-2. **Google Cloud** customer-managed Compute Engine VMs or GKE clusters (for sovereign, regulated, or isolated deployments)
+2. **Google Cloud** customer-managed Compute Engine VMs or GKE clusters (for sovereign, regulated, or isolated deployments where self-management is preferred over fully managed Cloud Spanner)
 3. **Any external public cloud** — including **Microsoft Azure** (Azure VMs / AKS), **Oracle Cloud Infrastructure (OCI)** (OCI Compute / OKE), or **Amazon Web Services (AWS)** (EC2 / EKS)
 4. **On-premises private datacenters, bare-metal servers, or disconnected edge sites**
 
-In this hands-on architectural deep dive, we will build and run a self-contained **Hybrid Multi-Cloud Showcase (`PayMesh + OmniRetail`)** spanning **three environments** (a **Local Laptop Docker Container**, **Google Cloud**, and an **External Cloud / On-Premises Node**—using AWS in our sample provisioning script, though the exact same container and code work identically on Azure, Oracle Cloud, or an on-premises datacenter).
+In this hands-on architectural deep dive, we will build and run a self-contained **True Hybrid & Multi-Cloud Showcase (`PayMesh + OmniRetail`)** spanning **three environments** (a **Local Laptop Docker Container**, **Google Cloud**, and an **External Cloud / On-Premises Node**—using AWS in our sample provisioning script, though the exact same container and code work identically on Azure, Oracle Cloud, or an on-premises datacenter).
 
-Most importantly, we will demonstrate two capabilities every enterprise architect asks about:
+Most importantly, we will demonstrate the core capabilities every enterprise architect asks about:
 
+- **True Hybrid and Multi-Cloud Portability**: Run the exact same Spanner Omni container image and schemas across multiple cloud providers and on-premises without cloud lock-in.
+- **Self-Managed Flexibility vs. Fully Managed Zero-Ops**: Understanding how self-managed Spanner Omni on external infrastructure complements fully managed Cloud Spanner on Google Cloud.
+- **Built-in AI & Multi-Model Engine**: Performing real-time semantic vector similarity search and graph traversal directly alongside transactional SQL without brittle CDC sync pipelines.
 - **Live Cross-Environment Synchronization**: When a database record is updated in *any* environment, how is it immediately reflected across all other environments?
 - **Network Disruption & Deterministic Reconciliation (`Recon`)**: When connections between environments are severed—and conflicting transactions occur independently during the outage—how does reconciliation happen without losing money or violating inventory invariants?
 
@@ -36,7 +41,7 @@ How can Spanner Omni guarantee external consistency on an external cloud VM, an 
 
 ### Bounding Clock Uncertainty ($\epsilon$) in Software Across Any Infrastructure
 
-In traditional Spanner, TrueTime exposes an API `TT.now()` that returns a time interval $[t_{\text{earliest}}, t_{\text{latest}}]$ where $t_{\text{latest}} - t_{\text{earliest}} = 2\epsilon$. To guarantee external consistency, the transaction coordinator performs a **Commit Wait** of $2\epsilon$.
+In traditional Cloud Spanner, TrueTime exposes an API `TT.now()` that returns a time interval $[t_{\text{earliest}}, t_{\text{latest}}]$ where $t_{\text{latest}} - t_{\text{earliest}} = 2\epsilon$. To guarantee external consistency, the transaction coordinator performs a **Commit Wait** of $2\epsilon$.
 
 Spanner Omni replaces specialized rack hardware with a **Software-Based TrueTime daemon**:
 - **Primary Time Server + Host Time Clients**: Omni continuously measures network round-trip times and bounds local quartz oscillator drift rate between synchronizations.
@@ -75,13 +80,28 @@ Spanner Omni executes all four workloads inside a **single ACID storage engine**
 
 In our showcase schema ([`schema.sql`](../schema.sql)), we combine:
 
-1. **Physical Table Interleaving (`Customers` $\rightarrow$ `Orders`)**: Child `Orders` rows are physically co-located on the same storage split as their parent `Customers` row (`INTERLEAVE IN PARENT Customers ON DELETE CASCADE`).
-2. **Full-Text Search Over Accounts & Products**: Automatic `TOKENIZE_FULLTEXT` and `SEARCH` indexes maintained transactionally.
-3. **Vector Similarity Search Over Live Inventory**: Exact `COSINE_DISTANCE(p.Embedding, r.Embedding)` filtered by `p.Stock > 0` and protected by `CONSTRAINT StockNonnegative CHECK (Stock >= 0)`.
-4. **ISO GQL Property Graphs (`PayGraph` & `RetailGraph`)**: Multi-hop payment reachability (`MATCH (a:Accounts)-[:Paid]->{1,3}(b:Accounts)`) and customer purchase graphs over live relational tables.
+1. **Native AI Vector Similarity Search Over Live Inventory**:
+   Spanner Omni stores high-dimensional embeddings directly in table rows using `ARRAY<FLOAT64>`. Unlike standalone vector databases that require streaming changes via Kafka or Debezium, Spanner Omni performs real-time semantic similarity searches (`COSINE_DISTANCE(p.Embedding, r.Embedding)`) in the **exact same ACID transaction** as relational inventory checks:
+   ```sql
+   SELECT p.ProductId, p.Name, p.Stock, COSINE_DISTANCE(p.Embedding, @query_embedding) AS distance
+   FROM Products p
+   WHERE p.Stock > 0 AND COSINE_DISTANCE(p.Embedding, @query_embedding) < 0.45
+   ORDER BY distance ASC
+   LIMIT 5;
+   ```
+   This delivers a **Zero-CDC AI architecture**: your generative AI recommendation agents or search models query live transactional data with zero data staleness and guaranteed consistency. In Spanner Omni Commercial Edition, dedicated stateless ANN vector search workers scale this out up to **1 Billion vectors**.
+
+2. **Graph-Augmented AI (GraphRAG) with ISO GQL Property Graphs**:
+   Spanner Omni supports native property graphs (`PayGraph` and `RetailGraph`) queried with ISO GQL standard syntax. LLM agents can perform 3-hop payment reachability (`MATCH (a:Accounts)-[:Paid]->{1,3}(b:Accounts)`) and customer product graph traversals over relational tables without ETL pipelines or third-party graph databases.
+
+3. **Transactional Full-Text Search**:
+   Automatic `TOKENIZE_FULLTEXT` and `SEARCH` indexes are maintained transactionally alongside vector embeddings and relational columns for hybrid search (keyword + semantic similarity).
+
+4. **Physical Table Interleaving (`Customers` $\rightarrow$ `Orders`)**:
+   Child `Orders` rows are physically co-located on the same storage split as their parent `Customers` row (`INTERLEAVE IN PARENT Customers ON DELETE CASCADE`) for sub-millisecond parent-child joins.
 
 ![OmniRetail Multi-Model Catalog & Vector Similarity Search](./images/screenshot_03_omniretail_vector_search_catalog.png)
-*Figure: The OmniRetail catalog executing vector similarity searches and order placement under physical stock check constraints directly within Spanner Omni.*
+*Figure: The OmniRetail catalog executing native vector similarity searches and order placement under physical stock check constraints directly within Spanner Omni.*
 
 ---
 
@@ -128,7 +148,7 @@ Now let’s tackle the central architectural question:
 Naive "Last-Write-Wins" (LWW) overwrites balances and loses transactions during network splits. Instead, our showcase implements a **Transactional Outbox + TrueTime Anti-Entropy Reconciliation Engine**:
 
 1. **Atomic Transactional Outbox (`SyncMutations`)**:
-   Every business transaction (`execute_transfer` or `execute_checkout`) writes both the domain table update (`Accounts`/`Transfers` or `Products`/`Orders`) **and** a `SyncMutations` record inside the **same atomic Spanner transaction** stamped with `COMMIT_TIMESTAMP`.
+   Every business transaction (`execute_transfer` or `execute_checkout`) writes both the domain table update (`Accounts`/`Transfers` or `Products`/`Orders`) **and** a `SyncMutations` record inside the **same atomic Spanner Omni transaction** stamped with `COMMIT_TIMESTAMP`.
 2. **Real-Time Propagation When Connected**:
    When network links between environments are healthy, committed mutations propagate immediately to all reachable peer environments, keeping their cryptographic `SHA-256` state digests identical.
 
