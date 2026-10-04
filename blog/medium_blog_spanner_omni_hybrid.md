@@ -58,6 +58,9 @@ Spanner Omni replaces specialized rack hardware with a **Software-Based TrueTime
 
 Spanner Omni ships with a built-in **Developer Edition** alongside the **Commercial Edition**. Understanding the key differences between these editions is essential when planning development, PoCs, and production deployments across clouds or datacenters:
 
+![Spanner Omni Editions Comparison Matrix](./images/table_spanner_omni_editions.png)
+*Figure: Comparison matrix of Spanner Omni Developer Edition, Commercial Edition, and Managed Cloud Spanner across licensing, limits, storage, and AI worker capabilities.*
+
 | Capability / Licensing Dimension | Spanner Omni **Developer Edition** (Default in Container) | Spanner Omni **Commercial Edition** | **Managed Cloud Spanner** (GCP Service) |
 | :--- | :--- | :--- | :--- |
 | **Target Use Case** | Local developer inner-loop, CI/CD pipelines, functional PoCs, and architectural demos (non-production) | Mission-critical production workloads on Azure, OCI, AWS, On-Premises Datacenters, Sovereign GCP, or Edge | Cloud-native workloads on GCP wanting zero database ops & Google SLAs |
