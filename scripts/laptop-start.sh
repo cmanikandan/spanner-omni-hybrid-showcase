@@ -41,3 +41,7 @@ done
 echo "[*] Ensuring database '${OMNI_DATABASE}' exists..."
 docker exec "${CONTAINER_NAME}" /google/spanner/bin/spanner databases create "${OMNI_DATABASE}" 2>/dev/null || true
 docker exec "${CONTAINER_NAME}" /google/spanner/bin/spanner databases list
+
+echo "[*] Launching Spanner Omni Web Console on 127.0.0.1:15026..."
+docker exec -d "${CONTAINER_NAME}" /google/spanner/bin/omni-jre/bin/java -jar /google/spanner/bin/spanner-console
+echo "[+] Spanner Omni Web Console is live at: http://127.0.0.1:15026"

@@ -13,6 +13,8 @@ echo "=== [1/4] Resuming Local Docker Container ==="
 if docker ps -a --format '{{.Names}}' | grep -qx "spanneromni"; then
   docker start spanneromni >/dev/null
   echo "[+] Started local 'spanneromni' container on port 15000."
+  docker exec -d spanneromni /google/spanner/bin/omni-jre/bin/java -jar /google/spanner/bin/spanner-console 2>/dev/null || true
+  echo "[+] Spanner Omni Web Console is live at: http://127.0.0.1:15026"
 else
   echo "[*] Launching laptop container via scripts/laptop-start.sh..."
   bash scripts/laptop-start.sh
